@@ -1,488 +1,528 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>每日接龙统计</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-      color: #4f574d;
-      background:
-        radial-gradient(circle at 0% 0%, rgba(201, 215, 187, 0.24), transparent 40%),
-        radial-gradient(circle at 100% 100%, rgba(188, 204, 167, 0.2), transparent 35%),
-        linear-gradient(180deg, #f7f9f4 0%, #f1f4ed 100%);
-    }
-    .header-shell {
-      background: rgba(255, 255, 255, 0.78);
-      border-bottom: 1px solid #dde5d2;
-      backdrop-filter: blur(14px);
-    }
-    .panel {
-      background: linear-gradient(165deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 247, 0.95));
-      border: 1px solid #dde5d2;
-      border-radius: 20px;
-      box-shadow: 0 12px 30px rgba(78, 93, 66, 0.08);
-    }
-    .panel-soft {
-      background: rgba(255, 255, 255, 0.74);
-      border: 1px solid #e2e9d9;
-      border-radius: 18px;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
-    }
-    .tab-active {
-      background: linear-gradient(135deg, #6a7b57 0%, #5d6e4c 100%);
-      color: #fff;
-      box-shadow: 0 6px 16px rgba(93, 110, 76, 0.28);
-    }
-    .tab-idle {
-      border: 1px solid #d6decb;
-      color: #798173;
-      background: rgba(255, 255, 255, 0.72);
-    }
-    .tab-idle:hover { background: #edf2e7; }
-    .hero-title {
-      letter-spacing: 0.04em;
-      color: #4f5a48;
-      text-shadow: 0 1px 0 rgba(255,255,255,.9);
-    }
-    .mono { font-variant-numeric: tabular-nums; }
-    .btn-main {
-      background: linear-gradient(135deg, #6b7c58 0%, #5f704d 100%);
-      color: #fff;
-      border: 1px solid #596c48;
-    }
-    .btn-main:hover { filter: brightness(1.04); }
-    .badge {
-      background: rgba(115, 140, 90, 0.1);
-      border: 1px solid rgba(115, 140, 90, 0.28);
-      color: #5b6d4b;
-    }
-    .medal {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      border-radius: 999px;
-      font-size: 12px;
-      margin-right: 6px;
-      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    }
-    .medal-gold { background: linear-gradient(145deg, #ffe8a3, #f5c85a); color: #735007; }
-    .medal-silver { background: linear-gradient(145deg, #f0f4fb, #cfd7e6); color: #53607a; }
-    .medal-bronze { background: linear-gradient(145deg, #f8d7bd, #dca375); color: #6e4420; }
-    .row-animate {
-      animation: rowIn 0.35s ease-out both;
-    }
-    @keyframes rowIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .history-timeline {
-      position: relative;
-      padding-left: 16px;
-      border-left: 2px dashed #d8e1cd;
-    }
-    .history-dot {
-      position: absolute;
-      left: -7px;
-      top: 14px;
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      background: #6f805b;
-      border: 2px solid #f7f9f4;
-      box-shadow: 0 0 0 2px rgba(111, 128, 91, 0.2);
-    }
-    body.dark {
-      color: #c8d2c4;
-      background:
-        radial-gradient(circle at 0% 0%, rgba(71, 92, 66, 0.28), transparent 42%),
-        radial-gradient(circle at 100% 100%, rgba(66, 85, 59, 0.24), transparent 35%),
-        linear-gradient(180deg, #1b221b 0%, #151a14 100%);
-    }
-    body.dark .header-shell {
-      background: rgba(22, 29, 22, 0.72);
-      border-bottom-color: #2d392c;
-    }
-    body.dark .hero-title { color: #e2ebdf; text-shadow: none; }
-    body.dark .panel {
-      background: linear-gradient(165deg, rgba(36, 47, 36, 0.95), rgba(28, 36, 28, 0.92));
-      border-color: #334131;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
-    }
-    body.dark .panel-soft {
-      background: rgba(33, 43, 33, 0.86);
-      border-color: #364436;
-      box-shadow: none;
-    }
-    body.dark .tab-idle {
-      background: rgba(38, 49, 38, 0.8);
-      border-color: #405040;
-      color: #aebca8;
-    }
-    body.dark .tab-idle:hover { background: #314030; }
-    body.dark .badge {
-      background: rgba(119, 152, 95, 0.2);
-      border-color: rgba(119, 152, 95, 0.38);
-      color: #bbd2ab;
-    }
-    body.dark textarea,
-    body.dark button,
-    body.dark .bg-white,
-    body.dark .bg-white\/85 {
-      color: #d7e0d4;
-    }
-    body.dark textarea {
-      background: rgba(24, 31, 24, 0.86) !important;
-      border-color: #425342 !important;
-    }
-    body.dark #ranking-list > div,
-    body.dark #history-list > div,
-    body.dark #ranking-cards > div {
-      border-color: #384838 !important;
-      background: rgba(30, 38, 30, 0.84) !important;
-      color: #d3ddd0;
-    }
-    body.dark .history-timeline { border-left-color: #435640; }
-  </style>
-</head>
-<body class="min-h-screen">
-  <header class="sticky top-0 z-10 header-shell">
-    <div class="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-semibold hero-title">每日接龙统计</h1>
-        <p class="text-xs text-slate-500 tracking-[0.28em] uppercase mt-1">Daily Statistics</p>
-      </div>
-      <div class="flex items-center gap-2">
-        <nav class="inline-flex rounded-xl p-1.5 panel-soft">
-          <button id="tab-dashboard" class="tab-active px-4 py-2 rounded-lg text-sm">数据分析</button>
-          <button id="tab-ranking" class="tab-idle px-4 py-2 rounded-lg text-sm">人员汇总</button>
-          <button id="tab-history" class="tab-idle px-4 py-2 rounded-lg text-sm">历史日志</button>
-        </nav>
-        <button id="theme-toggle" class="rounded-xl panel-soft px-3 py-2 text-xs text-slate-600">深色模式</button>
-      </div>
-    </div>
-  </header>
-
-  <main class="max-w-7xl mx-auto px-5 py-7 space-y-6">
-    <section class="panel p-6 md:p-7">
-      <div class="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p class="text-xs uppercase tracking-[0.25em] text-slate-500">Data Dashboard</p>
-          <h2 class="text-2xl md:text-3xl font-semibold text-slate-700 mt-1">每日统计看板</h2>
-          <p class="text-sm text-slate-500 mt-2">自动提取日期、仅统计项目符号数据、姓名统一规范化，适合长期记录与回溯。</p>
-        </div>
-        <span class="badge text-xs px-3 py-1.5 rounded-full">Premium UI</span>
-      </div>
-    </section>
-
-    <section id="view-dashboard">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div class="lg:col-span-4 space-y-4">
-          <div class="panel p-5">
-            <div class="flex items-center justify-between mb-3">
-              <h2 class="text-xs tracking-widest text-slate-500 uppercase">数据录入</h2>
-              <span class="text-[11px] px-2.5 py-1 rounded-full badge">整数统计</span>
-            </div>
-            <textarea id="input-data" rows="11" class="w-full mt-3 rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white/85 focus:outline-none focus:ring-2 focus:ring-lime-100 focus:border-lime-300" placeholder="粘贴每日多条接龙数据，一行一条。例如：
-5月6日接龙
-1. 张三 5
-2、李四：12
-王五 8次"></textarea>
-            <div class="mt-3 flex gap-2">
-              <button id="btn-example" class="flex-1 rounded-lg border border-slate-300 bg-white py-2 text-xs hover:bg-slate-50">填入示例</button>
-              <button id="btn-add" class="flex-1 rounded-lg btn-main py-2 text-xs">解析并统计</button>
-            </div>
-          </div>
-          <div class="grid grid-cols-2 gap-3">
-            <div class="panel p-4 text-center"><div class="text-xs text-slate-500 tracking-wider uppercase">总和</div><div id="stat-total" class="text-4xl mt-2 text-[#62754f] mono">0</div></div>
-            <div class="panel p-4 text-center"><div class="text-xs text-slate-500 tracking-wider uppercase">人数</div><div id="stat-people" class="text-4xl mt-2 text-[#62754f] mono">0</div></div>
-          </div>
-        </div>
-        <div class="lg:col-span-8">
-          <div class="panel min-h-[540px]">
-            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
-              <h2 class="text-xs tracking-widest text-slate-500 uppercase">全员统计汇总</h2>
-              <button id="btn-export" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50">导出 CSV</button>
-            </div>
-            <div class="grid grid-cols-12 px-5 py-3 text-xs text-slate-500 border-b border-slate-200">
-              <div class="col-span-2">排名</div><div class="col-span-4">姓名</div><div class="col-span-3 text-center">参与天数</div><div class="col-span-3 text-right">累计总和</div>
-            </div>
-            <div id="ranking-list"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="view-ranking" class="hidden panel p-6 md:p-7">
-      <div class="flex justify-between mb-4"><h2 class="text-lg text-slate-700">人员详细汇总</h2><span class="text-xs text-slate-500">共 <span id="rank-person-count">0</span> 位</span></div>
-      <div id="ranking-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
-    </section>
-
-    <section id="view-history" class="hidden panel p-6 md:p-7">
-      <div class="flex justify-between mb-4"><h2 class="text-lg text-slate-700">历史数据</h2><button id="btn-clear" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100">清空历史</button></div>
-      <div id="history-list" class="space-y-3"></div>
-    </section>
-  </main>
-
-  <script>
-    const STORAGE_KEY = "chain_daily_board_clean";
-    const THEME_KEY = "chain_daily_board_theme";
-    const state = { records: [] };
-    const refs = {
-      input: document.getElementById("input-data"),
-      statTotal: document.getElementById("stat-total"),
-      statPeople: document.getElementById("stat-people"),
-      rankingList: document.getElementById("ranking-list"),
-      rankingCards: document.getElementById("ranking-cards"),
-      rankPersonCount: document.getElementById("rank-person-count"),
-      historyList: document.getElementById("history-list")
-    };
-
-    function init() {
-      applyTheme(localStorage.getItem(THEME_KEY) || "light");
-      load();
-      bind();
-      renderAll();
-    }
-
-    function bind() {
-      document.getElementById("btn-example").addEventListener("click", () => {
-        refs.input.value = "1. 张三 5\n2、李四：12\n王五 8次\n赵六: 20";
-      });
-      document.getElementById("btn-add").addEventListener("click", addRecord);
-      document.getElementById("btn-export").addEventListener("click", exportCsv);
-      document.getElementById("btn-clear").addEventListener("click", clearHistory);
-      document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
-      document.getElementById("tab-dashboard").addEventListener("click", () => switchTab("dashboard"));
-      document.getElementById("tab-ranking").addEventListener("click", () => switchTab("ranking"));
-      document.getElementById("tab-history").addEventListener("click", () => switchTab("history"));
-    }
-
-    function applyTheme(theme) {
-      const isDark = theme === "dark";
-      document.body.classList.toggle("dark", isDark);
-      document.getElementById("theme-toggle").textContent = isDark ? "浅色模式" : "深色模式";
-      localStorage.setItem(THEME_KEY, theme);
-    }
-
-    function toggleTheme() {
-      const next = document.body.classList.contains("dark") ? "light" : "dark";
-      applyTheme(next);
-    }
-
-    function switchTab(tab) {
-      ["dashboard", "ranking", "history"].forEach((name) => {
-        document.getElementById("view-" + name).classList.add("hidden");
-        const btn = document.getElementById("tab-" + name);
-        btn.classList.remove("tab-active");
-        btn.classList.add("tab-idle");
-      });
-      document.getElementById("view-" + tab).classList.remove("hidden");
-      const active = document.getElementById("tab-" + tab);
-      active.classList.remove("tab-idle");
-      active.classList.add("tab-active");
-    }
-
-    function pad2(n) {
-      return String(n).padStart(2, "0");
-    }
-
-    function extractDateFromText(raw) {
-      const cn = raw.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
-      const slash = raw.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
-      const now = new Date();
-      const year = now.getFullYear();
-
-      if (cn) {
-        const month = Number(cn[1]);
-        const day = Number(cn[2]);
-        return {
-          dateKey: year + "-" + pad2(month) + "-" + pad2(day),
-          displayDate: month + "月" + day + "日"
-        };
-      }
-      if (slash) {
-        const month = Number(slash[1]);
-        const day = Number(slash[2]);
-        return {
-          dateKey: year + "-" + pad2(month) + "-" + pad2(day),
-          displayDate: month + "/" + day
-        };
-      }
-      return null;
-    }
-
-    function parseLines(raw) {
-      function normalizeName(name) {
-        const plain = name
-          .replace(/\s+/g, "")
-          .replace(/[0-9０-９]/g, "");
-        return Array.from(plain).slice(0, 3).join("");
-      }
-
-      const lines = raw.split("\n").map((s) => s.trim()).filter(Boolean);
-      const bulletPattern = /^(?:\d+\s*[\.、]|[-*•●])\s*/;
-      const firstBulletIndex = lines.findIndex((line) => bulletPattern.test(line));
-      const sourceLines = firstBulletIndex >= 0 ? lines.slice(firstBulletIndex) : [];
-      const out = [];
-      for (const line of sourceLines) {
-        if (!bulletPattern.test(line)) continue;
-        const nums = line.match(/-?\d+(?:\.\d+)?/g);
-        if (!nums || nums.length === 0) continue;
-        const amount = Math.round(Number(nums[nums.length - 1])); // no decimals
-        if (!Number.isFinite(amount) || amount < 0) continue;
-        const name = line
-          .replace(/^\d+\s*[\.、]\s*/, "")
-          .replace(/[:：]\s*-?\d+(?:\.\d+)?\s*(次|份|个|遍)?\s*$/, "")
-          .replace(/-?\d+(?:\.\d+)?\s*(次|份|个|遍)\s*$/, "")
-          .trim();
-        if (!name) continue;
-        const normalizedName = normalizeName(name);
-        if (!normalizedName) continue;
-        out.push({ name: normalizedName, amount });
-      }
-      return out;
-    }
-
-    function addRecord() {
-      const raw = refs.input.value.trim();
-      if (!raw) return alert("请粘贴接龙数据");
-      const extractedDate = extractDateFromText(raw);
-      if (!extractedDate) return alert("未识别日期，请在输入中包含“X月X日”或“X/X”");
-      const items = parseLines(raw);
-      if (items.length === 0) return alert("未识别到项目符号数据，请从“1.”、“1、”或“-”开头");
-
-      const byName = {};
-      for (const item of items) {
-        if (!byName[item.name]) byName[item.name] = 0;
-        byName[item.name] += item.amount;
-      }
-      const details = Object.keys(byName).map((name) => ({ name, amount: byName[name] }));
-      const total = details.reduce((sum, row) => sum + row.amount, 0);
-      const record = { date: extractedDate.dateKey, displayDate: extractedDate.displayDate, total, participantCount: details.length, details };
-      const idx = state.records.findIndex((r) => r.date === extractedDate.dateKey);
-      if (idx >= 0) state.records[idx] = record; else state.records.push(record);
-      state.records.sort((a, b) => b.date.localeCompare(a.date));
-      save();
-      renderAll();
-      refs.input.value = "";
-    }
-
-    function aggregate() {
-      const map = {};
-      let total = 0;
-      for (const rec of state.records) {
-        total += rec.total;
-        for (const d of rec.details) {
-          if (!map[d.name]) map[d.name] = { total: 0, days: 0 };
-          map[d.name].total += d.amount;
-          map[d.name].days += 1;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>每日接龙统计 Daily Statistics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#f4f5f0',
+                            100: '#e8ebe3',
+                            200: '#d5dacc',
+                            300: '#b8c2a8',
+                            400: '#9aa886',
+                            500: '#7d8f6b',
+                            600: '#627254',
+                            700: '#4e5a43',
+                            800: '#404a38',
+                            900: '#363f30',
+                        },
+                        cream: '#faf9f6',
+                        'stone-custom': '#8c8c7a'
+                    },
+                    fontFamily: {
+                        serif: ['"Noto Serif SC"', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
         }
-      }
-      const ranking = Object.keys(map).map((name) => ({ name, total: map[name].total, days: map[name].days })).sort((a, b) => b.total - a.total);
-      return { total, people: ranking.length, ranking };
-    }
+    </script>
+    <style>
+        body {
+            background-color: #f4f5f0;
+            font-family: 'Inter', sans-serif;
+        }
+        .font-serif-sc {
+            font-family: 'Noto Serif SC', serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+        .tab-active {
+            background-color: #627254;
+            color: white;
+            box-shadow: 0 4px 14px rgba(98, 114, 84, 0.3);
+        }
+        .tab-inactive {
+            background-color: transparent;
+            color: #8c8c7a;
+            border: 1px solid #d5dacc;
+        }
+        .tab-inactive:hover {
+            background-color: rgba(98, 114, 84, 0.1);
+            color: #627254;
+        }
+        .input-area {
+            background: linear-gradient(180deg, #faf9f6 0%, #f4f5f0 100%);
+            border: 1px solid #d5dacc;
+            transition: all 0.3s ease;
+        }
+        .input-area:focus-within {
+            border-color: #9aa886;
+            box-shadow: 0 0 0 3px rgba(154, 168, 134, 0.15);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #9aa886 0%, #7d8f6b 100%);
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(125, 143, 107, 0.3);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        .stat-card {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(213, 218, 204, 0.6);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+        }
+        .table-row {
+            transition: all 0.2s ease;
+        }
+        .table-row:hover {
+            background-color: rgba(244, 245, 240, 0.8);
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .number-display {
+            font-variant-numeric: tabular-nums;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #d5dacc;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b8c2a8;
+        }
+        .badge-ready {
+            background: rgba(154, 168, 134, 0.15);
+            color: #627254;
+            border: 1px solid rgba(154, 168, 134, 0.3);
+        }
+        .empty-state {
+            background-image: radial-gradient(circle, #e8ebe3 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .chart-bar {
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-700">
 
-    function renderAll() {
-      const stats = aggregate();
-      refs.statTotal.textContent = stats.total.toLocaleString();
-      refs.statPeople.textContent = String(stats.people);
-      renderRanking(stats.ranking);
-      renderCards(stats.ranking);
-      renderHistory();
-    }
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-sage-200">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-baseline gap-3">
+                <h1 class="text-2xl font-serif-sc font-bold text-gray-800 tracking-wide">每日接龙统计</h1>
+                <span class="text-sm text-stone-custom italic font-serif-sc tracking-wider">Daily Statistics</span>
+            </div>
+            <div class="text-xs text-stone-custom tracking-[0.2em] uppercase font-medium hidden sm:block">
+                Automatic Chain Data Parsing & Insights
+            </div>
+        </div>
+    </header>
 
-    function renderRanking(ranking) {
-      if (ranking.length === 0) {
-        refs.rankingList.innerHTML = '<div class="text-slate-400 text-sm py-16 text-center">暂无有效数据，请先录入接龙内容</div>';
-        return;
-      }
-      refs.rankingList.innerHTML = ranking.map((row, i) => '<div class="row-animate grid grid-cols-12 px-5 py-3 text-sm border-b border-slate-100" style="animation-delay:' + (i * 0.03) + 's"><div class="col-span-2 flex items-center">' + rankBadge(i) + '<span>' + (i + 1) + '</span></div><div class="col-span-4 font-medium">' + escapeHtml(row.name) + '</div><div class="col-span-3 text-center mono">' + row.days + '</div><div class="col-span-3 text-right mono">' + row.total.toLocaleString() + '</div></div>').join("");
-    }
+    <!-- Navigation Tabs -->
+    <nav class="max-w-7xl mx-auto px-6 mt-6 mb-8">
+        <div class="inline-flex bg-white/60 backdrop-blur-sm rounded-xl p-1.5 border border-sage-200 shadow-sm">
+            <button onclick="switchTab('analysis')" id="tab-analysis" class="tab-active px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                数据分析
+            </button>
+            <button onclick="switchTab('personnel')" id="tab-personnel" class="tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 24 24" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                人员汇总
+            </button>
+            <button onclick="switchTab('history')" id="tab-history" class="tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                历史日志
+            </button>
+        </div>
+    </nav>
 
-    function renderCards(ranking) {
-      refs.rankPersonCount.textContent = String(ranking.length);
-      if (ranking.length === 0) {
-        refs.rankingCards.innerHTML = '<div class="text-slate-400 text-sm">暂无数据</div>';
-        return;
-      }
-      refs.rankingCards.innerHTML = ranking.map((row, i) => '<div class="row-animate rounded-xl bg-slate-50 border border-slate-200 p-4"><div class="text-xs text-slate-500 flex items-center">' + rankBadge(i) + '第 ' + (i + 1) + ' 名</div><div class="mt-1 font-semibold text-slate-700">' + escapeHtml(row.name) + '</div><div class="mt-2 text-sm">参与天数：' + row.days + '</div><div class="text-sm">累计总和：' + row.total + '</div></div>').join("");
-    }
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 pb-12">
+        
+        <!-- Analysis Tab -->
+        <div id="view-analysis" class="animate-fade-in">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <!-- Left Column: Input -->
+                <div class="lg:col-span-4 space-y-6">
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-sage-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xs font-bold text-gray-500 tracking-[0.15em] uppercase">数据录入 / Input Data</h2>
+                            <span class="badge-ready px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-sage-600 animate-pulse"></span>
+                                智能识别已就绪
+                            </span>
+                        </div>
+                        
+                        <div class="input-area rounded-xl p-1 mb-4">
+                            <textarea 
+                                id="input-data" 
+                                placeholder="在此粘贴接龙文字..." 
+                                class="w-full h-64 bg-transparent border-none resize-none focus:ring-0 text-sm text-gray-700 placeholder-gray-400 p-4 font-mono leading-relaxed"
+                            ></textarea>
+                            <div class="flex justify-end px-3 pb-2">
+                                <button onclick="fillExample()" class="text-xs text-stone-custom hover:text-sage-700 transition-colors px-3 py-1.5 rounded-md hover:bg-sage-50 border border-transparent hover:border-sage-200">
+                                    填入示例
+                                </button>
+                            </div>
+                        </div>
 
-    function renderHistory() {
-      if (state.records.length === 0) {
-        refs.historyList.innerHTML = '<div class="text-slate-400 text-sm py-8 text-center">暂无历史记录</div>';
-        return;
-      }
-      refs.historyList.innerHTML = state.records.map((rec, idx) => '<div class="history-timeline row-animate"><div class="history-dot"></div><div class="rounded-xl bg-slate-50 border border-slate-200 p-4"><div class="flex items-center justify-between"><div class="font-semibold text-slate-700">' + escapeHtml(rec.displayDate || rec.date) + '</div><button onclick="deleteRecord(' + idx + ')" class="text-xs rounded-md border border-rose-200 px-2 py-1 text-rose-700">删除</button></div><div class="text-xs text-slate-500 mt-1">总和：' + rec.total + '，人数：' + rec.participantCount + '</div><div class="mt-2 flex flex-wrap gap-1.5">' + rec.details.map((d) => '<span class="text-xs px-2 py-1 rounded bg-white border border-slate-200">' + escapeHtml(d.name) + ' ' + d.amount + '</span>').join("") + '</div></div></div>').join("");
-    }
+                        <button onclick="parseData()" class="btn-primary w-full py-3.5 rounded-xl text-white font-medium text-sm tracking-wide flex items-center justify-center gap-2 shadow-lg shadow-sage-200">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            立即解析统计数据
+                        </button>
 
-    function rankBadge(index) {
-      if (index === 0) return '<span class="medal medal-gold">🥇</span>';
-      if (index === 1) return '<span class="medal medal-silver">🥈</span>';
-      if (index === 2) return '<span class="medal medal-bronze">🥉</span>';
-      return "";
-    }
+                        <div class="mt-5 flex items-start gap-3 bg-sage-50 rounded-xl p-4 border border-sage-100">
+                            <svg class="w-5 h-5 text-sage-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <p class="text-xs text-gray-600 leading-relaxed italic">
+                                AI 专家会自动过滤广告与杂质，精准提取姓名与对应的总计次数。
+                            </p>
+                        </div>
+                    </div>
 
-    function deleteRecord(index) {
-      if (!window.confirm("确定删除这条历史吗？")) return;
-      state.records.splice(index, 1);
-      save();
-      renderAll();
-    }
-    window.deleteRecord = deleteRecord;
+                    <!-- 全局统计卡片 -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="stat-card rounded-2xl p-5 text-center">
+                            <div class="text-xs text-gray-500 tracking-wider uppercase mb-2">总数值 / Total</div>
+                            <div id="today-total" class="text-4xl font-serif-sc font-bold text-sage-800 number-display">0</div>
+                        </div>
+                        <div class="stat-card rounded-2xl p-5 text-center">
+                            <div class="text-xs text-gray-500 tracking-wider uppercase mb-2">参与人数 / Participants</div>
+                            <div id="today-count" class="text-4xl font-serif-sc font-bold text-sage-800 number-display">0</div>
+                        </div>
+                    </div>
+                </div>
 
-    function clearHistory() {
-      if (!window.confirm("确定清空全部历史数据吗？")) return;
-      state.records = [];
-      save();
-      renderAll();
-    }
+                <!-- Right Column: Results -->
+                <div class="lg:col-span-8">
+                    <div class="bg-white rounded-2xl shadow-sm border border-sage-100 min-h-[600px] flex flex-col">
+                        <div class="p-6 border-b border-sage-100 flex items-center justify-between">
+                            <h2 class="text-xs font-bold text-gray-500 tracking-[0.15em] uppercase">全员统计汇总 / Global Personnel Summary</h2>
+                            <div class="flex gap-2">
+                                <button onclick="exportCSV()" class="text-xs px-3 py-1.5 rounded-lg border border-sage-200 text-gray-600 hover:bg-sage-50 hover:text-sage-700 transition-all flex items-center gap-1.5">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    导出 CSV
+                                </button>
+                            </div>
+                        </div>
 
-    function exportCsv() {
-      const ranking = aggregate().ranking;
-      if (ranking.length === 0) return alert("暂无可导出数据");
-      let csv = "排名,姓名,参与天数,累计总和\n";
-      ranking.forEach((row, i) => {
-        csv += (i + 1) + ",\"" + String(row.name).replace(/"/g, "\"\"") + "\"," + row.days + "," + row.total + "\n";
-      });
-      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "接龙统计.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-    }
+                        <!-- Table Header -->
+                        <div class="grid grid-cols-12 gap-4 px-6 py-4 bg-sage-50/50 text-xs font-medium text-gray-500 tracking-wider uppercase border-b border-sage-100">
+                            <div class="col-span-1">排名</div>
+                            <div class="col-span-3">参与者姓名</div>
+                            <div class="col-span-2 text-center">参与次数</div>
+                            <div class="col-span-2 text-center">单次平均</div>
+                            <div class="col-span-4 text-right">累计总和 / Total</div>
+                        </div>
 
-    function escapeHtml(text) {
-      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    }
+                        <!-- Table Body -->
+                        <div id="personnel-list" class="flex-1 overflow-y-auto max-h-[500px]">
+                            <div class="empty-state h-full flex flex-col items-center justify-center text-gray-400 py-20">
+                                <svg class="w-12 h-12 mb-3 text-sage-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                <p class="text-sm italic">数据库中尚未发现任何有效人员数据</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-    function load() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (!data || !Array.isArray(data.records)) return;
-        state.records = data.records.map((rec) => ({
-          date: String(rec.date || ""),
-          displayDate: String(rec.displayDate || rec.date || ""),
-          total: Math.round(Number(rec.total) || 0),
-          participantCount: Math.round(Number(rec.participantCount) || 0),
-          details: Array.isArray(rec.details) ? rec.details.filter((d) => d && typeof d.name === "string").map((d) => ({ name: d.name, amount: Math.round(Number(d.amount) || 0) })) : []
-        })).filter((rec) => rec.date && rec.details.length > 0);
-      } catch (_e) {
-        state.records = [];
-      }
-    }
+        <!-- Personnel Tab -->
+        <div id="view-personnel" class="hidden animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-sm border border-sage-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-serif-sc font-bold text-gray-800">人员详细档案</h2>
+                    <span class="text-xs text-gray-500">共 <span id="personnel-total-count">0</span> 位参与者</span>
+                </div>
+                <div id="personnel-detail-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                </div>
+            </div>
+        </div>
 
-    init();
-  </script>
+        <!-- History Tab -->
+        <div id="view-history" class="hidden animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-sm border border-sage-100 p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-serif-sc font-bold text-gray-800">历史记录日志</h2>
+                    <button onclick="clearHistory()" class="text-xs text-red-500 hover:text-red-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 border border-transparent hover:border-red-200">
+                        清空历史
+                    </button>
+                </div>
+                <div id="history-list" class="space-y-4">
+                    <div class="text-center py-12 text-gray-400 italic">
+                        暂无历史记录
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Data Store
+        let globalData = {
+            personnel: {},
+            dailyRecords: [],
+            currentDate: new Date().toISOString().split('T')[0]
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadFromStorage();
+            updateUI();
+        });
+
+        function switchTab(tab) {
+            ['analysis', 'personnel', 'history'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                const btn = document.getElementById(`tab-${t}`);
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.classList.remove('tab-inactive');
+            activeBtn.classList.add('tab-active');
+
+            if (tab === 'personnel') renderPersonnelDetail();
+            if (tab === 'history') renderHistory();
+        }
+
+        function fillExample() {
+            const example = `5月5日 接龙统计
+1. 张三 128次
+2. 李四 256次  
+3. 王五 89次`;
+            document.getElementById('input-data').value = example;
+        }
+
+        // 提取日期
+        function extractDateFromText(text) {
+            const cnDateMatch = text.match(/(\d{1,2})月(\d{1,2})日/);
+            if (cnDateMatch) {
+                return { raw: `${cnDateMatch[1]}月${cnDateMatch[2]}日`, display: `${cnDateMatch[1]}月${cnDateMatch[2]}日` };
+            }
+            const slashDateMatch = text.match(/(\d{1,2})\/(\d{1,2})/);
+            if (slashDateMatch) {
+                return { raw: `${slashDateMatch[1]}/${slashDateMatch[2]}`, display: `${slashDateMatch[1]}月${slashDateMatch[2]}日` };
+            }
+            return null;
+        }
+
+        // ==============================================
+        // 删除单条历史记录，并回滚全员统计
+        // ==============================================
+        function deleteSingleRecord(index) {
+            if (!confirm('确定删除这条记录？')) return;
+
+            // 取出要删除的当天记录
+            const deletedRecord = globalData.dailyRecords[index];
+
+            // 从全员统计里 扣减 当天的次数和数量
+            deletedRecord.details.forEach(({ name, amount }) => {
+                const p = globalData.personnel[name];
+                if (p) {
+                    p.count = Math.max(0, p.count - 1);           // 参与次数 -1
+                    p.total = Math.max(0, p.total - amount);     // 总次数 - 当天金额
+                    p.history = p.history.filter(h => 
+                        !(h.date === deletedRecord.displayDate && h.amount === amount)
+                    );
+
+                    // 如果该人员所有数据都为 0，直接删除
+                    if (p.count === 0 && p.total === 0) {
+                        delete globalData.personnel[name];
+                    }
+                }
+            });
+
+            // 删除这条历史
+            globalData.dailyRecords.splice(index, 1);
+
+            // 保存并刷新所有界面
+            saveToStorage();
+            renderHistory();
+            updateUI();
+            renderPersonnelDetail();
+        }
+
+        // 清空历史时，也清空全员统计
+        function clearHistory() {
+            if(!confirm('确定清空所有历史？全员统计也会重置！')) return;
+            globalData.dailyRecords = [];
+            globalData.personnel = {};
+            saveToStorage();
+            renderHistory();
+            updateUI();
+        }
+
+        function parseData() {
+            const input = document.getElementById('input-data').value.trim();
+            if (!input) { alert('请输入数据'); return; }
+
+            const extractedDate = extractDateFromText(input);
+            const recordDate = globalData.currentDate;
+            const displayDate = extractedDate ? extractedDate.display : recordDate;
+
+            const lines = input.split('\n');
+            const parsed = [];
+            const namePattern = /^\d+[\.\、]\s*([^\d\s【\[\(]+)\s*[:：]?\s*(\d+(?:\.\d+)?)/;
+            const excludePattern = /【|广告|特价|优惠|联系人|客服/;
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line || excludePattern.test(line)) return;
+                const match = line.match(namePattern);
+                if (match) {
+                    const name = match[1].trim();
+                    const amount = parseFloat(match[2]);
+                    if (name && amount) parsed.push({ name, amount });
+                }
+            });
+
+            if (parsed.length === 0) { alert('未识别有效数据'); return; }
+
+            const todayTotal = parsed.reduce((sum, p) => sum + p.amount, 0);
+            parsed.forEach(({ name, amount }) => {
+                if (!globalData.personnel[name]) globalData.personnel[name] = { count: 0, total: 0, history: [] };
+                globalData.personnel[name].count++;
+                globalData.personnel[name].total += amount;
+                globalData.personnel[name].history.push({ date: displayDate, amount });
+            });
+
+            globalData.dailyRecords.unshift({
+                date: recordDate, displayDate, total: todayTotal, count: parsed.length, details: parsed
+            });
+
+            saveToStorage();
+            renderPersonnelList();
+            renderPersonnelDetail();
+            renderHistory();
+            updateUI();
+            document.getElementById('input-data').value = '';
+        }
+
+        function renderPersonnelList() {
+            const container = document.getElementById('personnel-list');
+            const sorted = Object.entries(globalData.personnel).sort((a, b) => b[1].total - a[1].total);
+            if (sorted.length === 0) {
+                container.innerHTML = `<div class="text-center py-20 text-gray-400">暂无数据</div>`;
+                return;
+            }
+
+            container.innerHTML = sorted.map(([name, data], idx) => `
+            <div class="table-row grid grid-cols-12 gap-4 px-6 py-4 border-b border-sage-50 items-center">
+                <div class="col-span-1 text-center">${idx+1}</div>
+                <div class="col-span-3 font-medium">${name}</div>
+                <div class="col-span-2 text-center">${data.count}</div>
+                <div class="col-span-2 text-center">${Math.round(data.total/data.count)}</div>
+                <div class="col-span-4 text-right font-bold">${data.total.toLocaleString()}</div>
+            </div>`).join('');
+        }
+
+        function renderPersonnelDetail() {
+            const list = document.getElementById('personnel-detail-list');
+            const sorted = Object.entries(globalData.personnel).sort((a,b)=>b[1].total-a[1].total);
+            document.getElementById('personnel-total-count').textContent = sorted.length;
+            list.innerHTML = sorted.map(([n,d])=>`
+            <div class="bg-sage-50 rounded-xl p-4 border">
+                <div class="font-bold text-lg">${n}</div>
+                <div class="text-sm">累计：${d.total} 次</div>
+            </div>`).join('');
+        }
+
+        // 每条卡片右上角删除按钮
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            if (globalData.dailyRecords.length === 0) {
+                container.innerHTML = '<div class="text-center py-10 text-gray-400">暂无历史记录</div>';
+                return;
+            }
+
+            container.innerHTML = globalData.dailyRecords.map((r, i) => `
+            <div class="relative bg-sage-50/40 rounded-xl p-5 border border-sage-200">
+                <button onclick="deleteSingleRecord(${i})" 
+                    class="absolute top-3 right-3 w-7 h-7 flex items-center justify-center bg-red-100 text-red-600 rounded-full hover:bg-red-200 transition">
+                    ✕
+                </button>
+                <div class="font-bold mb-1">${r.displayDate}（${r.count}人）</div>
+                <div class="text-sm text-gray-600">总计：${r.total} 次</div>
+                <div class="mt-2 flex flex-wrap gap-1">
+                    ${r.details.map(x=>`<span class="px-2 py-1 bg-white rounded text-xs">${x.name} ${x.amount}</span>`).join('')}
+                </div>
+            </div>
+            `).join('');
+        }
+
+        // ==============================================
+        // 【核心修改】全局统计：总次数 + 总人数（去重）
+        // ==============================================
+        function updateUI() {
+            renderPersonnelList();
+            
+            // 所有天数总和
+            const allTotal = Object.values(globalData.personnel).reduce((sum, p) => sum + p.total, 0);
+            // 所有不同人员总数
+            const allPersonCount = Object.keys(globalData.personnel).length;
+
+            document.getElementById('today-total').textContent = allTotal.toLocaleString();
+            document.getElementById('today-count').textContent = allPersonCount;
+        }
+
+        function exportCSV() {
+            const sorted = Object.entries(globalData.personnel).sort((a,b)=>b[1].total-a[1].total);
+            let csv = "排名,姓名,参与次数,平均,总计\n";
+            sorted.forEach(([n,d],i)=>{
+                csv += `${i+1},${n},${d.count},${Math.round(d.total/d.count)},${d.total}\n`;
+            });
+            const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = "接龙统计.csv";
+            a.click();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('chainStatsData', JSON.stringify(globalData));
+        }
+
+        function loadFromStorage() {
+            const d = localStorage.getItem('chainStatsData');
+            if(d) globalData = JSON.parse(d);
+            globalData.currentDate = new Date().toISOString().split('T')[0];
+        }
+    </script>
 </body>
 </html>
