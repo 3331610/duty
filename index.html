@@ -1,0 +1,488 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>每日接龙统计</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: #4f574d;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(201, 215, 187, 0.24), transparent 40%),
+        radial-gradient(circle at 100% 100%, rgba(188, 204, 167, 0.2), transparent 35%),
+        linear-gradient(180deg, #f7f9f4 0%, #f1f4ed 100%);
+    }
+    .header-shell {
+      background: rgba(255, 255, 255, 0.78);
+      border-bottom: 1px solid #dde5d2;
+      backdrop-filter: blur(14px);
+    }
+    .panel {
+      background: linear-gradient(165deg, rgba(255, 255, 255, 0.98), rgba(250, 252, 247, 0.95));
+      border: 1px solid #dde5d2;
+      border-radius: 20px;
+      box-shadow: 0 12px 30px rgba(78, 93, 66, 0.08);
+    }
+    .panel-soft {
+      background: rgba(255, 255, 255, 0.74);
+      border: 1px solid #e2e9d9;
+      border-radius: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+    }
+    .tab-active {
+      background: linear-gradient(135deg, #6a7b57 0%, #5d6e4c 100%);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(93, 110, 76, 0.28);
+    }
+    .tab-idle {
+      border: 1px solid #d6decb;
+      color: #798173;
+      background: rgba(255, 255, 255, 0.72);
+    }
+    .tab-idle:hover { background: #edf2e7; }
+    .hero-title {
+      letter-spacing: 0.04em;
+      color: #4f5a48;
+      text-shadow: 0 1px 0 rgba(255,255,255,.9);
+    }
+    .mono { font-variant-numeric: tabular-nums; }
+    .btn-main {
+      background: linear-gradient(135deg, #6b7c58 0%, #5f704d 100%);
+      color: #fff;
+      border: 1px solid #596c48;
+    }
+    .btn-main:hover { filter: brightness(1.04); }
+    .badge {
+      background: rgba(115, 140, 90, 0.1);
+      border: 1px solid rgba(115, 140, 90, 0.28);
+      color: #5b6d4b;
+    }
+    .medal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    .medal-gold { background: linear-gradient(145deg, #ffe8a3, #f5c85a); color: #735007; }
+    .medal-silver { background: linear-gradient(145deg, #f0f4fb, #cfd7e6); color: #53607a; }
+    .medal-bronze { background: linear-gradient(145deg, #f8d7bd, #dca375); color: #6e4420; }
+    .row-animate {
+      animation: rowIn 0.35s ease-out both;
+    }
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .history-timeline {
+      position: relative;
+      padding-left: 16px;
+      border-left: 2px dashed #d8e1cd;
+    }
+    .history-dot {
+      position: absolute;
+      left: -7px;
+      top: 14px;
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: #6f805b;
+      border: 2px solid #f7f9f4;
+      box-shadow: 0 0 0 2px rgba(111, 128, 91, 0.2);
+    }
+    body.dark {
+      color: #c8d2c4;
+      background:
+        radial-gradient(circle at 0% 0%, rgba(71, 92, 66, 0.28), transparent 42%),
+        radial-gradient(circle at 100% 100%, rgba(66, 85, 59, 0.24), transparent 35%),
+        linear-gradient(180deg, #1b221b 0%, #151a14 100%);
+    }
+    body.dark .header-shell {
+      background: rgba(22, 29, 22, 0.72);
+      border-bottom-color: #2d392c;
+    }
+    body.dark .hero-title { color: #e2ebdf; text-shadow: none; }
+    body.dark .panel {
+      background: linear-gradient(165deg, rgba(36, 47, 36, 0.95), rgba(28, 36, 28, 0.92));
+      border-color: #334131;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+    }
+    body.dark .panel-soft {
+      background: rgba(33, 43, 33, 0.86);
+      border-color: #364436;
+      box-shadow: none;
+    }
+    body.dark .tab-idle {
+      background: rgba(38, 49, 38, 0.8);
+      border-color: #405040;
+      color: #aebca8;
+    }
+    body.dark .tab-idle:hover { background: #314030; }
+    body.dark .badge {
+      background: rgba(119, 152, 95, 0.2);
+      border-color: rgba(119, 152, 95, 0.38);
+      color: #bbd2ab;
+    }
+    body.dark textarea,
+    body.dark button,
+    body.dark .bg-white,
+    body.dark .bg-white\/85 {
+      color: #d7e0d4;
+    }
+    body.dark textarea {
+      background: rgba(24, 31, 24, 0.86) !important;
+      border-color: #425342 !important;
+    }
+    body.dark #ranking-list > div,
+    body.dark #history-list > div,
+    body.dark #ranking-cards > div {
+      border-color: #384838 !important;
+      background: rgba(30, 38, 30, 0.84) !important;
+      color: #d3ddd0;
+    }
+    body.dark .history-timeline { border-left-color: #435640; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="sticky top-0 z-10 header-shell">
+    <div class="max-w-7xl mx-auto px-5 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-semibold hero-title">每日接龙统计</h1>
+        <p class="text-xs text-slate-500 tracking-[0.28em] uppercase mt-1">Daily Statistics</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <nav class="inline-flex rounded-xl p-1.5 panel-soft">
+          <button id="tab-dashboard" class="tab-active px-4 py-2 rounded-lg text-sm">数据分析</button>
+          <button id="tab-ranking" class="tab-idle px-4 py-2 rounded-lg text-sm">人员汇总</button>
+          <button id="tab-history" class="tab-idle px-4 py-2 rounded-lg text-sm">历史日志</button>
+        </nav>
+        <button id="theme-toggle" class="rounded-xl panel-soft px-3 py-2 text-xs text-slate-600">深色模式</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-5 py-7 space-y-6">
+    <section class="panel p-6 md:p-7">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-slate-500">Data Dashboard</p>
+          <h2 class="text-2xl md:text-3xl font-semibold text-slate-700 mt-1">每日统计看板</h2>
+          <p class="text-sm text-slate-500 mt-2">自动提取日期、仅统计项目符号数据、姓名统一规范化，适合长期记录与回溯。</p>
+        </div>
+        <span class="badge text-xs px-3 py-1.5 rounded-full">Premium UI</span>
+      </div>
+    </section>
+
+    <section id="view-dashboard">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-4 space-y-4">
+          <div class="panel p-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-xs tracking-widest text-slate-500 uppercase">数据录入</h2>
+              <span class="text-[11px] px-2.5 py-1 rounded-full badge">整数统计</span>
+            </div>
+            <textarea id="input-data" rows="11" class="w-full mt-3 rounded-xl border border-slate-300 px-3 py-2.5 text-sm bg-white/85 focus:outline-none focus:ring-2 focus:ring-lime-100 focus:border-lime-300" placeholder="粘贴每日多条接龙数据，一行一条。例如：
+5月6日接龙
+1. 张三 5
+2、李四：12
+王五 8次"></textarea>
+            <div class="mt-3 flex gap-2">
+              <button id="btn-example" class="flex-1 rounded-lg border border-slate-300 bg-white py-2 text-xs hover:bg-slate-50">填入示例</button>
+              <button id="btn-add" class="flex-1 rounded-lg btn-main py-2 text-xs">解析并统计</button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="panel p-4 text-center"><div class="text-xs text-slate-500 tracking-wider uppercase">总和</div><div id="stat-total" class="text-4xl mt-2 text-[#62754f] mono">0</div></div>
+            <div class="panel p-4 text-center"><div class="text-xs text-slate-500 tracking-wider uppercase">人数</div><div id="stat-people" class="text-4xl mt-2 text-[#62754f] mono">0</div></div>
+          </div>
+        </div>
+        <div class="lg:col-span-8">
+          <div class="panel min-h-[540px]">
+            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+              <h2 class="text-xs tracking-widest text-slate-500 uppercase">全员统计汇总</h2>
+              <button id="btn-export" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50">导出 CSV</button>
+            </div>
+            <div class="grid grid-cols-12 px-5 py-3 text-xs text-slate-500 border-b border-slate-200">
+              <div class="col-span-2">排名</div><div class="col-span-4">姓名</div><div class="col-span-3 text-center">参与天数</div><div class="col-span-3 text-right">累计总和</div>
+            </div>
+            <div id="ranking-list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-ranking" class="hidden panel p-6 md:p-7">
+      <div class="flex justify-between mb-4"><h2 class="text-lg text-slate-700">人员详细汇总</h2><span class="text-xs text-slate-500">共 <span id="rank-person-count">0</span> 位</span></div>
+      <div id="ranking-cards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+    </section>
+
+    <section id="view-history" class="hidden panel p-6 md:p-7">
+      <div class="flex justify-between mb-4"><h2 class="text-lg text-slate-700">历史数据</h2><button id="btn-clear" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs text-rose-700 hover:bg-rose-100">清空历史</button></div>
+      <div id="history-list" class="space-y-3"></div>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "chain_daily_board_clean";
+    const THEME_KEY = "chain_daily_board_theme";
+    const state = { records: [] };
+    const refs = {
+      input: document.getElementById("input-data"),
+      statTotal: document.getElementById("stat-total"),
+      statPeople: document.getElementById("stat-people"),
+      rankingList: document.getElementById("ranking-list"),
+      rankingCards: document.getElementById("ranking-cards"),
+      rankPersonCount: document.getElementById("rank-person-count"),
+      historyList: document.getElementById("history-list")
+    };
+
+    function init() {
+      applyTheme(localStorage.getItem(THEME_KEY) || "light");
+      load();
+      bind();
+      renderAll();
+    }
+
+    function bind() {
+      document.getElementById("btn-example").addEventListener("click", () => {
+        refs.input.value = "1. 张三 5\n2、李四：12\n王五 8次\n赵六: 20";
+      });
+      document.getElementById("btn-add").addEventListener("click", addRecord);
+      document.getElementById("btn-export").addEventListener("click", exportCsv);
+      document.getElementById("btn-clear").addEventListener("click", clearHistory);
+      document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+      document.getElementById("tab-dashboard").addEventListener("click", () => switchTab("dashboard"));
+      document.getElementById("tab-ranking").addEventListener("click", () => switchTab("ranking"));
+      document.getElementById("tab-history").addEventListener("click", () => switchTab("history"));
+    }
+
+    function applyTheme(theme) {
+      const isDark = theme === "dark";
+      document.body.classList.toggle("dark", isDark);
+      document.getElementById("theme-toggle").textContent = isDark ? "浅色模式" : "深色模式";
+      localStorage.setItem(THEME_KEY, theme);
+    }
+
+    function toggleTheme() {
+      const next = document.body.classList.contains("dark") ? "light" : "dark";
+      applyTheme(next);
+    }
+
+    function switchTab(tab) {
+      ["dashboard", "ranking", "history"].forEach((name) => {
+        document.getElementById("view-" + name).classList.add("hidden");
+        const btn = document.getElementById("tab-" + name);
+        btn.classList.remove("tab-active");
+        btn.classList.add("tab-idle");
+      });
+      document.getElementById("view-" + tab).classList.remove("hidden");
+      const active = document.getElementById("tab-" + tab);
+      active.classList.remove("tab-idle");
+      active.classList.add("tab-active");
+    }
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function extractDateFromText(raw) {
+      const cn = raw.match(/(\d{1,2})\s*月\s*(\d{1,2})\s*日/);
+      const slash = raw.match(/(\d{1,2})\s*\/\s*(\d{1,2})/);
+      const now = new Date();
+      const year = now.getFullYear();
+
+      if (cn) {
+        const month = Number(cn[1]);
+        const day = Number(cn[2]);
+        return {
+          dateKey: year + "-" + pad2(month) + "-" + pad2(day),
+          displayDate: month + "月" + day + "日"
+        };
+      }
+      if (slash) {
+        const month = Number(slash[1]);
+        const day = Number(slash[2]);
+        return {
+          dateKey: year + "-" + pad2(month) + "-" + pad2(day),
+          displayDate: month + "/" + day
+        };
+      }
+      return null;
+    }
+
+    function parseLines(raw) {
+      function normalizeName(name) {
+        const plain = name
+          .replace(/\s+/g, "")
+          .replace(/[0-9０-９]/g, "");
+        return Array.from(plain).slice(0, 3).join("");
+      }
+
+      const lines = raw.split("\n").map((s) => s.trim()).filter(Boolean);
+      const bulletPattern = /^(?:\d+\s*[\.、]|[-*•●])\s*/;
+      const firstBulletIndex = lines.findIndex((line) => bulletPattern.test(line));
+      const sourceLines = firstBulletIndex >= 0 ? lines.slice(firstBulletIndex) : [];
+      const out = [];
+      for (const line of sourceLines) {
+        if (!bulletPattern.test(line)) continue;
+        const nums = line.match(/-?\d+(?:\.\d+)?/g);
+        if (!nums || nums.length === 0) continue;
+        const amount = Math.round(Number(nums[nums.length - 1])); // no decimals
+        if (!Number.isFinite(amount) || amount < 0) continue;
+        const name = line
+          .replace(/^\d+\s*[\.、]\s*/, "")
+          .replace(/[:：]\s*-?\d+(?:\.\d+)?\s*(次|份|个|遍)?\s*$/, "")
+          .replace(/-?\d+(?:\.\d+)?\s*(次|份|个|遍)\s*$/, "")
+          .trim();
+        if (!name) continue;
+        const normalizedName = normalizeName(name);
+        if (!normalizedName) continue;
+        out.push({ name: normalizedName, amount });
+      }
+      return out;
+    }
+
+    function addRecord() {
+      const raw = refs.input.value.trim();
+      if (!raw) return alert("请粘贴接龙数据");
+      const extractedDate = extractDateFromText(raw);
+      if (!extractedDate) return alert("未识别日期，请在输入中包含“X月X日”或“X/X”");
+      const items = parseLines(raw);
+      if (items.length === 0) return alert("未识别到项目符号数据，请从“1.”、“1、”或“-”开头");
+
+      const byName = {};
+      for (const item of items) {
+        if (!byName[item.name]) byName[item.name] = 0;
+        byName[item.name] += item.amount;
+      }
+      const details = Object.keys(byName).map((name) => ({ name, amount: byName[name] }));
+      const total = details.reduce((sum, row) => sum + row.amount, 0);
+      const record = { date: extractedDate.dateKey, displayDate: extractedDate.displayDate, total, participantCount: details.length, details };
+      const idx = state.records.findIndex((r) => r.date === extractedDate.dateKey);
+      if (idx >= 0) state.records[idx] = record; else state.records.push(record);
+      state.records.sort((a, b) => b.date.localeCompare(a.date));
+      save();
+      renderAll();
+      refs.input.value = "";
+    }
+
+    function aggregate() {
+      const map = {};
+      let total = 0;
+      for (const rec of state.records) {
+        total += rec.total;
+        for (const d of rec.details) {
+          if (!map[d.name]) map[d.name] = { total: 0, days: 0 };
+          map[d.name].total += d.amount;
+          map[d.name].days += 1;
+        }
+      }
+      const ranking = Object.keys(map).map((name) => ({ name, total: map[name].total, days: map[name].days })).sort((a, b) => b.total - a.total);
+      return { total, people: ranking.length, ranking };
+    }
+
+    function renderAll() {
+      const stats = aggregate();
+      refs.statTotal.textContent = stats.total.toLocaleString();
+      refs.statPeople.textContent = String(stats.people);
+      renderRanking(stats.ranking);
+      renderCards(stats.ranking);
+      renderHistory();
+    }
+
+    function renderRanking(ranking) {
+      if (ranking.length === 0) {
+        refs.rankingList.innerHTML = '<div class="text-slate-400 text-sm py-16 text-center">暂无有效数据，请先录入接龙内容</div>';
+        return;
+      }
+      refs.rankingList.innerHTML = ranking.map((row, i) => '<div class="row-animate grid grid-cols-12 px-5 py-3 text-sm border-b border-slate-100" style="animation-delay:' + (i * 0.03) + 's"><div class="col-span-2 flex items-center">' + rankBadge(i) + '<span>' + (i + 1) + '</span></div><div class="col-span-4 font-medium">' + escapeHtml(row.name) + '</div><div class="col-span-3 text-center mono">' + row.days + '</div><div class="col-span-3 text-right mono">' + row.total.toLocaleString() + '</div></div>').join("");
+    }
+
+    function renderCards(ranking) {
+      refs.rankPersonCount.textContent = String(ranking.length);
+      if (ranking.length === 0) {
+        refs.rankingCards.innerHTML = '<div class="text-slate-400 text-sm">暂无数据</div>';
+        return;
+      }
+      refs.rankingCards.innerHTML = ranking.map((row, i) => '<div class="row-animate rounded-xl bg-slate-50 border border-slate-200 p-4"><div class="text-xs text-slate-500 flex items-center">' + rankBadge(i) + '第 ' + (i + 1) + ' 名</div><div class="mt-1 font-semibold text-slate-700">' + escapeHtml(row.name) + '</div><div class="mt-2 text-sm">参与天数：' + row.days + '</div><div class="text-sm">累计总和：' + row.total + '</div></div>').join("");
+    }
+
+    function renderHistory() {
+      if (state.records.length === 0) {
+        refs.historyList.innerHTML = '<div class="text-slate-400 text-sm py-8 text-center">暂无历史记录</div>';
+        return;
+      }
+      refs.historyList.innerHTML = state.records.map((rec, idx) => '<div class="history-timeline row-animate"><div class="history-dot"></div><div class="rounded-xl bg-slate-50 border border-slate-200 p-4"><div class="flex items-center justify-between"><div class="font-semibold text-slate-700">' + escapeHtml(rec.displayDate || rec.date) + '</div><button onclick="deleteRecord(' + idx + ')" class="text-xs rounded-md border border-rose-200 px-2 py-1 text-rose-700">删除</button></div><div class="text-xs text-slate-500 mt-1">总和：' + rec.total + '，人数：' + rec.participantCount + '</div><div class="mt-2 flex flex-wrap gap-1.5">' + rec.details.map((d) => '<span class="text-xs px-2 py-1 rounded bg-white border border-slate-200">' + escapeHtml(d.name) + ' ' + d.amount + '</span>').join("") + '</div></div></div>').join("");
+    }
+
+    function rankBadge(index) {
+      if (index === 0) return '<span class="medal medal-gold">🥇</span>';
+      if (index === 1) return '<span class="medal medal-silver">🥈</span>';
+      if (index === 2) return '<span class="medal medal-bronze">🥉</span>';
+      return "";
+    }
+
+    function deleteRecord(index) {
+      if (!window.confirm("确定删除这条历史吗？")) return;
+      state.records.splice(index, 1);
+      save();
+      renderAll();
+    }
+    window.deleteRecord = deleteRecord;
+
+    function clearHistory() {
+      if (!window.confirm("确定清空全部历史数据吗？")) return;
+      state.records = [];
+      save();
+      renderAll();
+    }
+
+    function exportCsv() {
+      const ranking = aggregate().ranking;
+      if (ranking.length === 0) return alert("暂无可导出数据");
+      let csv = "排名,姓名,参与天数,累计总和\n";
+      ranking.forEach((row, i) => {
+        csv += (i + 1) + ",\"" + String(row.name).replace(/"/g, "\"\"") + "\"," + row.days + "," + row.total + "\n";
+      });
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "接龙统计.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
+    function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (!data || !Array.isArray(data.records)) return;
+        state.records = data.records.map((rec) => ({
+          date: String(rec.date || ""),
+          displayDate: String(rec.displayDate || rec.date || ""),
+          total: Math.round(Number(rec.total) || 0),
+          participantCount: Math.round(Number(rec.participantCount) || 0),
+          details: Array.isArray(rec.details) ? rec.details.filter((d) => d && typeof d.name === "string").map((d) => ({ name: d.name, amount: Math.round(Number(d.amount) || 0) })) : []
+        })).filter((rec) => rec.date && rec.details.length > 0);
+      } catch (_e) {
+        state.records = [];
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
