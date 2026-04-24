@@ -15,7 +15,10 @@
                         sage: { 50: '#f4f5f0', 100: '#e8ebe3', 200: '#d5dacc', 300: '#b8c2a8', 400: '#9aa886', 500: '#7d8f6b', 600: '#627254', 700: '#4e5a43', 800: '#404a38', 900: '#363f30' },
                         cream: '#faf9f6', 'stone-custom': '#8c8c7a'
                     },
-                    fontFamily: { serif: ['"Noto Serif SC"', 'serif'], sans: ['Inter', 'sans-serif'] }
+                    fontFamily: { 
+                        'serif-sc': ['"Noto Serif SC"', 'serif'], 
+                        sans: ['Inter', 'sans-serif'] 
+                    }
                 }
             }
         }
@@ -53,6 +56,7 @@
     </nav>
 
     <main class="max-w-7xl mx-auto px-6 pb-12">
+        <!-- 数据分析标签页 -->
         <div id="view-analysis" class="animate-fade-in">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div class="lg:col-span-4 space-y-6">
@@ -73,7 +77,7 @@
                 </div>
                 <div class="lg:col-span-8">
                     <div class="bg-white rounded-2xl shadow-sm border border-sage-100 min-h-[500px]">
-                        <div id="personnel-list" class="p-6">
+                        <div id="analysis-personnel-list" class="p-6">
                             <p class="text-center text-gray-400 py-20 italic">正在从云端调取档案...</p>
                         </div>
                     </div>
@@ -81,27 +85,54 @@
             </div>
         </div>
 
+        <!-- 人员汇总标签页 -->
         <div id="view-personnel" class="hidden animate-fade-in">
-            <div id="personnel-detail-list" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+            <div id="personnel-detail-list" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- 人员汇总详情会在这里渲染 -->
+            </div>
         </div>
 
+        <!-- 历史日志标签页 -->
         <div id="view-history" class="hidden animate-fade-in">
             <div id="history-list" class="space-y-4 bg-white p-8 rounded-2xl border"></div>
+        </div>
+
+        <!-- 人员汇总面板 -->
+        <div id="personnel-panel" class="bg-white rounded-xl shadow p-6 mt-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">👥 人员汇总</h3>
+            <div id="panel-personnel-list" class="space-y-2 max-h-80 overflow-y-auto">
+                <!-- 这里会自动渲染所有人员 -->
+            </div>
+        </div>
+
+        <!-- 重复的人员汇总面板（保持原有样式） -->
+        <div style="margin-top:20px; padding:15px; background:white; border-radius:12px; box-shadow:0 1px 3px #00000010">
+            <h3 style="font-size:16px; margin-bottom:10px">👥 人员汇总（和接龙.html完全一样）</h3>
+            <div id="personList" style="max-height:300px; overflow-y:auto"></div>
         </div>
     </main>
 
     <script>
-        // --- 核心配置区 ---
+        // --- 全局数据 ---
+        let globalData = { 
+            personnel: {},  // 人员数据 { 姓名: { count: 次数, total: 累计金额 } }
+            dailyRecords: [] // 每日记录 [{ date: 日期, count: 人数, details: [{name: 姓名, amount: 金额}] }]
+        };
+
+        // --- Supabase 配置 ---
         const SUPABASE_URL = 'https://cfbyqoralwvjckgnqfyo.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_hq6Z9NJnLXtsY0hyMEZqWA_eboKn5yE'; 
         const RECORD_ID = '00000000-0000-0000-0000-000000000000';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        let globalData = { personnel: {}, dailyRecords: [] };
-
-        // 初始化加载
+        // --- 页面初始化 ---
         document.addEventListener('DOMContentLoaded', loadFromCloud);
+        window.addEventListener('load', showPersonnel);
 
+        // --- 核心函数 ---
+        /**
+         * 从云端加载数据
+         */
         async function loadFromCloud() {
             updateStatus('正在同步云端...');
             try {
@@ -119,72 +150,148 @@
                 }
             } catch (e) {
                 updateStatus('同步失败，请检查网络', 'text-red-500');
+                console.error('加载云端数据失败:', e);
             }
             updateUI();
+            renderPersonnelPanel();
         }
 
+        /**
+         * 保存数据到云端
+         */
         async function saveToCloud() {
             updateStatus('正在上传...');
-            const { error } = await _supabase
-                .from('jielong_records')
-                .update({ data: globalData, updated_at: new Date() })
-                .eq('id', RECORD_ID);
-            
-            if (error) updateStatus('上传失败', 'text-red-500');
-            else updateStatus('云端已更新', 'text-sage-600');
-        }
-
-        function updateStatus(msg, colorClass = 'text-amber-600') {
-            const el = document.getElementById('sync-status');
-            el.innerText = msg;
-            el.className = `text-xs font-medium italic ${colorClass}`;
-        }
-
-        // --- 逻辑函数 ---
-        function parseData() {
-            const input = document.getElementById('input-data').value.trim();
-            if (!input) return;
-
-            const lines = input.split('\n');
-            const parsed = [];
-            const namePattern = /^\d+[\.\、]\s*([^\d\s【\[\(]+)\s*[:：]?\s*(\d+(?:\.\d+)?)/;
-
-            lines.forEach(line => {
-                const match = line.match(namePattern);
-                if (match) {
-                    const name = match[1].trim();
-                    const amount = parseFloat(match[2]);
-                    parsed.push({ name, amount });
+            try {
+                const { error } = await _supabase
+                    .from('jielong_records')
+                    .upsert({ 
+                        id: RECORD_ID,
+                        data: globalData, 
+                        updated_at: new Date() 
+                    });
+                
+                if (error) {
+                    updateStatus('上传失败', 'text-red-500');
+                    console.error('上传云端数据失败:', error);
+                } else {
+                    updateStatus('云端已更新', 'text-sage-600');
                 }
-            });
-
-            if (parsed.length === 0) { alert('未识别出有效格式'); return; }
-
-            parsed.forEach(({ name, amount }) => {
-                if (!globalData.personnel[name]) globalData.personnel[name] = { count: 0, total: 0 };
-                globalData.personnel[name].count++;
-                globalData.personnel[name].total += amount;
-            });
-
-            globalData.dailyRecords.unshift({ date: new Date().toLocaleDateString(), count: parsed.length, details: parsed });
-            
-            document.getElementById('input-data').value = '';
-            updateUI();
-            saveToCloud();
+            } catch (e) {
+                updateStatus('上传失败', 'text-red-500');
+                console.error('上传云端数据异常:', e);
+            }
         }
 
-        function updateUI() {
-            const container = document.getElementById('personnel-list');
-            const sorted = Object.entries(globalData.personnel).sort((a, b) => b[1].total - a[1].total);
+        /**
+         * 解析接龙数据
+         */
+/**
+ * 解析接龙数据 (同步接龙.html逻辑)
+ */
+function parseData() {
+    const input = document.getElementById('input-data').value.trim();
+    if (!input) {
+        alert('请粘贴接龙数据后再解析');
+        return;
+    }
+
+    // 提取日期逻辑 (保持一致)
+    const cnDateMatch = input.match(/(\d{1,2})月(\d{1,2})日/);
+    const displayDate = cnDateMatch ? cnDateMatch[0] : new Date().toLocaleDateString();
+
+    const lines = input.split('\n');
+    const parsed = [];
+    // 统一匹配正则
+    const namePattern = /^\d+[\.\、]\s*([^\d\s【\[\(]+)\s*[:：]?\s*(\d+(?:\.\d+)?)/;
+
+    lines.forEach(line => {
+        const match = line.match(namePattern);
+        if (match) {
+            const name = match[1].trim();
+            const amount = parseFloat(match[2]);
+            if (name && !isNaN(amount)) parsed.push({ name, amount });
+        }
+    });
+
+    if (parsed.length === 0) { 
+        alert('未识别出有效格式，请检查输入内容'); 
+        return; 
+    }
+
+    // 更新人员数据 (增加 history 字段以匹配接龙.html 结构)
+    parsed.forEach(({ name, amount }) => {
+        if (!globalData.personnel[name]) {
+            globalData.personnel[name] = { count: 0, total: 0, history: [] };
+        }
+        globalData.personnel[name].count++;
+        globalData.personnel[name].total += amount;
+        // 记录历史，方便回滚或对账
+        globalData.personnel[name].history.push({ date: displayDate, amount });
+    });
+
+    // 添加每日记录
+    globalData.dailyRecords.unshift({ 
+        date: new Date().toISOString().split('T')[0], 
+        displayDate: displayDate,
+        count: parsed.length, 
+        details: parsed,
+        total: parsed.reduce((sum, p) => sum + p.amount, 0)
+    });
+    
+    document.getElementById('input-data').value = '';
+    updateUI();
+    saveToCloud();
+}
+
+        /**
+         * 切换标签页
+         * @param {string} tab - 标签页名称 (analysis/personnel/history)
+         */
+        function switchTab(tab) {
+            // 隐藏所有标签页，重置所有标签按钮样式
+            ['analysis', 'personnel', 'history'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = 'tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium ml-2';
+            });
             
+            // 显示选中的标签页，设置按钮激活样式
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`tab-${tab}`).className = 'tab-active px-6 py-2.5 rounded-lg text-sm font-medium';
+            
+            // 特殊处理历史日志标签页
+            if (tab === 'history') {
+                renderHistoryList();
+            }
+            
+            // 特殊处理人员汇总标签页
+            if (tab === 'personnel') {
+                renderPersonnelDetail();
+            }
+        }
+
+        /**
+         * 更新主UI（数据分析页面）
+         */
+        function updateUI() {
+            const container = document.getElementById('analysis-personnel-list');
+            const sorted = Object.entries(globalData.personnel)
+                .sort((a, b) => b[1].total - a[1].total);
+            
+            // 无数据时显示提示
             if (sorted.length === 0) {
                 container.innerHTML = `<p class="text-center text-gray-400 py-20 italic">暂无数据</p>`;
+                document.getElementById('today-total').textContent = '0';
+                document.getElementById('today-count').textContent = '0';
                 return;
             }
 
+            // 渲染人员列表
             container.innerHTML = `
                 <div class="grid grid-cols-12 gap-4 px-4 py-2 bg-sage-50 text-xs font-bold uppercase mb-2">
-                    <div class="col-span-1">#</div><div class="col-span-5">姓名</div><div class="col-span-2 text-center">次数</div><div class="col-span-4 text-right">累计</div>
+                    <div class="col-span-1">#</div>
+                    <div class="col-span-5">姓名</div>
+                    <div class="col-span-2 text-center">次数</div>
+                    <div class="col-span-4 text-right">累计</div>
                 </div>
                 ${sorted.map(([name, data], idx) => `
                 <div class="grid grid-cols-12 gap-4 px-4 py-3 border-b border-gray-50 items-center text-sm">
@@ -194,25 +301,127 @@
                     <div class="col-span-4 text-right font-bold text-sage-700">${data.total.toLocaleString()}</div>
                 </div>`).join('')}`;
 
-            document.getElementById('today-total').textContent = Object.values(globalData.personnel).reduce((s, p) => s + p.total, 0).toLocaleString();
-            document.getElementById('today-count').textContent = Object.keys(globalData.personnel).length;
+            // 更新统计数字
+            const totalAmount = Object.values(globalData.personnel).reduce((s, p) => s + p.total, 0);
+            const totalPeople = Object.keys(globalData.personnel).length;
+            
+            document.getElementById('today-total').textContent = totalAmount.toLocaleString();
+            document.getElementById('today-count').textContent = totalPeople;
+            
+            // 更新人员列表
+            showPersonnel();
         }
 
-        function switchTab(tab) {
-            ['analysis', 'personnel', 'history'].forEach(t => {
-                document.getElementById(`view-${t}`).classList.add('hidden');
-                document.getElementById(`tab-${t}`).className = 'tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium ml-2';
+        /**
+         * 渲染人员汇总面板
+         */
+        function renderPersonnelPanel() {
+            const panel = document.getElementById('panel-personnel-list');
+            if (!panel || !globalData?.personnel) return;
+
+            const personnel = globalData.personnel;
+            panel.innerHTML = '';
+
+            // 按次数从高到低排序
+            const sortedList = Object.entries(personnel)
+                .sort((a, b) => b[1].count - a[1].count);
+
+            // 渲染每个人员项
+            sortedList.forEach(([name, info]) => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                item.innerHTML = `
+                <span class="font-medium text-gray-700">${name}</span>
+                <span class="text-sm text-gray-500">${info.count}次，共${info.total.toLocaleString()}元</span>
+                `;
+                panel.appendChild(item);
             });
-            document.getElementById(`view-${tab}`).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).className = 'tab-active px-6 py-2.5 rounded-lg text-sm font-medium';
-            
-            if (tab === 'history') {
-                document.getElementById('history-list').innerHTML = globalData.dailyRecords.map(r => `
-                    <div class="p-4 bg-sage-50 rounded-xl mb-2">
-                        <div class="font-bold">${r.date}</div>
-                        <div class="text-xs text-gray-500">${r.details.map(d => `${d.name}(${d.amount})`).join(', ')}</div>
-                    </div>
-                `).join('') || '暂无历史';
+        }
+
+        /**
+         * 渲染人员汇总详情页
+         */
+        /**
+ * 渲染人员汇总详情页 (完全匹配接龙.html样式)
+ */
+function renderPersonnelDetail() {
+    const container = document.getElementById('personnel-detail-list');
+    if (!container || !globalData?.personnel) return;
+
+    // 按累计金额从高到低排序
+    const sortedList = Object.entries(globalData.personnel)
+        .sort((a, b) => b[1].total - a[1].total);
+
+    container.innerHTML = sortedList.map(([name, info]) => `
+        <div class="bg-sage-50 rounded-xl p-4 border border-sage-200 shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+                <div class="font-bold text-lg text-gray-800">${name}</div>
+                <span class="text-[10px] bg-white px-2 py-0.5 rounded-full border border-sage-200 text-sage-600">档案已同步</span>
+            </div>
+            <div class="space-y-1">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">累计：</span>
+                    <span class="font-bold text-sage-700">${info.total.toLocaleString()} 次</span>
+                </div>
+                <div class="flex justify-between text-xs text-gray-400 italic">
+                    <span>参与频率</span>
+                    <span>共 ${info.count} 次接龙</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+        /**
+         * 渲染历史日志列表
+         */
+        function renderHistoryList() {
+            const container = document.getElementById('history-list');
+            if (!globalData?.dailyRecords || globalData.dailyRecords.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-400 py-8 italic">暂无历史记录</p>';
+                return;
+            }
+
+            container.innerHTML = globalData.dailyRecords.map(r => `
+                <div class="p-4 bg-sage-50 rounded-xl mb-2">
+                    <div class="font-bold text-gray-800">${r.date}</div>
+                    <div class="text-sm text-gray-600 mt-1">参与人数：${r.count} 人</div>
+                    <div class="text-xs text-gray-500 mt-2">${r.details.map(d => `${d.name}(${d.amount})`).join(', ')}</div>
+                </div>
+            `).join('');
+        }
+
+        /**
+         * 显示人员列表（兼容原有样式）
+         */
+        function showPersonnel() {
+    const list = document.getElementById("personList");
+    if (!list || !globalData?.personnel) return;
+    
+    let html = "";
+    Object.entries(globalData.personnel)
+        .sort((a, b) => b[1].total - a[1].total) // 统一按总计排序
+        .forEach(([name, info]) => {
+            html += `
+            <div style="display:flex; justify-content:space-between; padding:8px 12px; border-bottom:1px solid #f0f0f0; align-items:center;">
+                <span style="font-weight:500;">${name}</span>
+                <span style="color:#627254; font-size:13px;">${info.count}次 · <strong style="font-size:14px;">${info.total.toLocaleString()}</strong></span>
+            </div>
+            `;
+        });
+
+    list.innerHTML = html;
+}
+        /**
+         * 更新同步状态提示
+         * @param {string} msg - 提示信息
+         * @param {string} colorClass - 颜色类名
+         */
+        function updateStatus(msg, colorClass = 'text-amber-600') {
+            const el = document.getElementById('sync-status');
+            if (el) {
+                el.innerText = msg;
+                el.className = `text-xs font-medium italic ${colorClass}`;
             }
         }
     </script>
