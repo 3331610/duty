@@ -133,6 +133,20 @@
         .chart-bar {
             transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
         }
+        /* 新增：导入区域样式 */
+        .import-area {
+            background: linear-gradient(180deg, #faf9f6 0%, #f4f5f0 100%);
+            border: 1px dashed #b8c2a8;
+            transition: all 0.3s ease;
+        }
+        .import-area:hover {
+            border-color: #7d8f6b;
+            background: rgba(154, 168, 134, 0.05);
+        }
+        .import-area.dragover {
+            border-color: #627254;
+            background: rgba(98, 114, 84, 0.1);
+        }
     </style>
 </head>
 <body class="min-h-screen text-gray-700">
@@ -158,7 +172,7 @@
                 数据分析
             </button>
             <button onclick="switchTab('personnel')" id="tab-personnel" class="tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 24 24" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
                 人员汇总
             </button>
             <button onclick="switchTab('history')" id="tab-history" class="tab-inactive px-6 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-2">
@@ -205,10 +219,67 @@
                         </button>
 
                         <div class="mt-5 flex items-start gap-3 bg-sage-50 rounded-xl p-4 border border-sage-100">
-                            <svg class="w-5 h-5 text-sage-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <svg class="w-5 h-5 text-sage-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             <p class="text-xs text-gray-600 leading-relaxed italic">
                                 AI 专家会自动过滤广告与杂质，精准提取姓名与对应的总计次数。
                             </p>
+                        </div>
+                    </div>
+
+                    <!-- 数据迁移/导入区域（新增） -->
+                    <div class="bg-white rounded-2xl p-6 shadow-sm border border-sage-100">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-xs font-bold text-gray-500 tracking-[0.15em] uppercase">数据迁移 / Import</h2>
+                            <span class="text-xs text-sage-600 bg-sage-50 px-2 py-1 rounded">从旧版导入</span>
+                        </div>
+                        
+                        <!-- 方式一：文件上传 -->
+                        <div 
+                            id="drop-zone"
+                            class="import-area rounded-xl p-4 mb-3 text-center cursor-pointer"
+                            onclick="document.getElementById('file-input').click()"
+                            ondragover="handleDragOver(event)"
+                            ondragleave="handleDragLeave(event)"
+                            ondrop="handleDrop(event)"
+                        >
+                            <input 
+                                type="file" 
+                                id="file-input" 
+                                accept=".json" 
+                                class="hidden" 
+                                onchange="handleFileSelect(event)"
+                            >
+                            <svg class="w-8 h-8 mx-auto mb-2 text-sage-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <p class="text-sm text-gray-600 font-medium">点击或拖拽上传 JSON 文件</p>
+                            <p class="text-xs text-gray-400 mt-1">支持从 接龙.html 导出的数据文件</p>
+                        </div>
+
+                        <!-- 方式二：直接粘贴 JSON -->
+                        <div class="relative">
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="h-px flex-1 bg-sage-200"></div>
+                                <span class="text-xs text-gray-400">或粘贴 JSON 文本</span>
+                                <div class="h-px flex-1 bg-sage-200"></div>
+                            </div>
+                            <textarea 
+                                id="import-json-text" 
+                                placeholder='{"personnel":{...},"dailyRecords":[...]}'
+                                class="w-full h-24 bg-sage-50/50 border border-sage-200 rounded-lg p-3 text-xs font-mono text-gray-600 focus:outline-none focus:border-sage-400 resize-none"
+                            ></textarea>
+                            <button onclick="importFromText()" class="mt-2 w-full py-2 rounded-lg border border-sage-300 text-sage-700 text-xs font-medium hover:bg-sage-50 transition-colors">
+                                确认导入
+                            </button>
+                        </div>
+
+                        <!-- 导出当前数据（方便反向操作） -->
+                        <div class="mt-4 pt-4 border-t border-sage-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-400">当前数据备份</span>
+                            <button onclick="exportJSON()" class="text-xs text-sage-600 hover:text-sage-800 flex items-center gap-1 transition-colors">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                导出 JSON 备份
+                            </button>
                         </div>
                     </div>
 
@@ -340,6 +411,133 @@
                 return { raw: `${slashDateMatch[1]}/${slashDateMatch[2]}`, display: `${slashDateMatch[1]}月${slashDateMatch[2]}日` };
             }
             return null;
+        }
+
+        // ==============================================
+        // 【新增】数据导入功能
+        // ==============================================
+        
+        // 从文件导入（拖拽或选择）
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) processFile(files[0]);
+        }
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) processFile(file);
+        }
+        
+        function processFile(file) {
+            if (!file.name.endsWith('.json')) {
+                alert('请上传 .json 文件');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    mergeData(imported);
+                } catch (err) {
+                    alert('文件解析失败，请检查 JSON 格式');
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        // 从文本框导入
+        function importFromText() {
+            const text = document.getElementById('import-json-text').value.trim();
+            if (!text) { alert('请输入 JSON 数据'); return; }
+            try {
+                const imported = JSON.parse(text);
+                mergeData(imported);
+                document.getElementById('import-json-text').value = '';
+            } catch (err) {
+                alert('JSON 格式错误，请检查');
+            }
+        }
+        
+        // 合并导入的数据（核心逻辑：智能合并，不覆盖已有）
+        function mergeData(imported) {
+            if (!imported || typeof imported !== 'object') {
+                alert('数据格式不正确');
+                return;
+            }
+            
+            let mergeCount = 0;
+            
+            // 合并 personnel
+            if (imported.personnel) {
+                Object.entries(imported.personnel).forEach(([name, data]) => {
+                    if (!globalData.personnel[name]) {
+                        // 全新人员，直接添加
+                        globalData.personnel[name] = {
+                            count: data.count || 0,
+                            total: data.total || 0,
+                            history: data.history || []
+                        };
+                        mergeCount++;
+                    } else {
+                        // 已有人员，合并历史（去重：同一天同金额不重复添加）
+                        const existing = globalData.personnel[name];
+                        const existingKeys = new Set(existing.history.map(h => `${h.date}-${h.amount}`));
+                        
+                        (data.history || []).forEach(h => {
+                            const key = `${h.date}-${h.amount}`;
+                            if (!existingKeys.has(key)) {
+                                existing.history.push(h);
+                                existing.count++;
+                                existing.total += h.amount;
+                                existingKeys.add(key);
+                                mergeCount++;
+                            }
+                        });
+                    }
+                });
+            }
+            
+            // 合并 dailyRecords（去重）
+            if (imported.dailyRecords && Array.isArray(imported.dailyRecords)) {
+                const existingKeys = new Set(globalData.dailyRecords.map(r => `${r.date}-${r.total}-${r.count}`));
+                imported.dailyRecords.forEach(record => {
+                    const key = `${record.date}-${record.total}-${record.count}`;
+                    if (!existingKeys.has(key)) {
+                        globalData.dailyRecords.push(record);
+                        existingKeys.add(key);
+                    }
+                });
+                // 按日期倒序排列
+                globalData.dailyRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+            }
+            
+            saveToStorage();
+            updateUI();
+            renderPersonnelDetail();
+            renderHistory();
+            
+            alert(`导入成功！共合并 ${mergeCount} 条记录`);
+        }
+        
+        // 导出当前数据为 JSON（方便备份或迁移到其他设备）
+        function exportJSON() {
+            const dataStr = JSON.stringify(globalData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `接龙数据备份_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
         }
 
         // ==============================================
